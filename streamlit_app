@@ -1,0 +1,246 @@
+import streamlit as st
+import plotly.express as px
+import pandas as pd
+import os
+import warnings
+warnings.filterwarnings('ignore')
+import matplotlib.pyplot as plt
+import pandas as pd
+import datetime
+
+st.set_page_config(page_title="FUN OLYMPICS GAMES", page_icon=":bar_chart:",layout="wide")
+
+st.title(" :bar_chart: FUN OLYMPICS GAMES")
+st.markdown('<style>div.block-container{padding-top:1rem;}</style>',unsafe_allow_html=True)
+
+#fl = st.file_uploader(":file_folder: Upload a file",type=(["csv","txt","xlsx","xls"]))
+#if fl is not None:
+#    filename = fl.name
+#    st.write(filename)
+#    df = pd.read_csv(filename, encoding = "ISO-8859-1")
+#else:
+#    os.chdir(r"C:\Users\BIDA20-076\Desktop\star")
+#    df = pd.read_csv("updated_csv_file.csv", encoding = "ISO-8859-1")
+
+def process_web_server_logs(log_file):
+    log_df = pd.read_csv(log_file)
+    return log_df
+
+def main():
+    st.title("Web Server Log Viewer")
+    uploaded_file = st.file_uploader(":file_folder: Upload a file",type=(["csv","txt","xlsx","xls"]))
+    if uploaded_file is not None:
+        log_df = process_web_server_logs(uploaded_file)
+        st.write(log_df)
+    else:
+        os.chdir(r"C:\Users\BIDA20-076\Desktop\star")
+        df = pd.read_csv("updated_csv_file.csv", encoding = "ISO-8859-1")    
+
+if __name__ == "__main__":
+    main() 
+
+df = pd.read_csv(r"C:\Users\BIDA20-076\Desktop\star\updated_csv_file.csv", encoding = "ISO-8859-1")       
+
+#FRONT BAR
+
+#SIDEBAR
+st.sidebar.header("Choose your filter: ")
+
+#col1, col2 = st.columns((2))
+df["Time Stamp"] = pd.to_datetime(df["Time Stamp"])
+# Getting the min and max date 
+startDate = pd.to_datetime(df["Time Stamp"]).min()
+endDate = pd.to_datetime(df["Time Stamp"]).max()
+#with col1:
+date1 = st.sidebar.date_input("Start Date", startDate)
+#with col2:
+date2 = st.sidebar.date_input("End Date", endDate)
+filtered_df = df[(df["Time Stamp"] >= pd.to_datetime(date1)) & (df["Time Stamp"] <= pd.to_datetime(date2))].copy()
+
+# Create for Continent
+Continent = st.sidebar.multiselect("Pick your Continent", df["Continent"].unique())
+if not Continent:
+    df2 = df.copy()
+else:
+    df2 = df[df["Continent"].isin(Continent)]
+
+# Create for Country
+Country = st.sidebar.multiselect("Pick the Country", df2["Country"].unique())
+if not Country:
+    df3 = df2.copy()
+else:
+    df3 = df2[df2["Country"].isin(Country)]
+
+# Create for Sport Category
+Sport_Category= st.sidebar.multiselect("Pick the Sport Category",df3["Sport Category"].unique())
+
+# Filter the data based on Region, State and City
+if not Continent and not Country and not Sport_Category:
+    filtered_df = df
+elif not Country and not Sport_Category:
+    filtered_df = df[df["Continent"].isin(Continent)]
+elif not Continent and not Sport_Category:
+    filtered_df = df[df["Country"].isin(Country)]
+elif Country and Sport_Category:
+    filtered_df = df3[df["Country"].isin(Country) & df3["Sport Category"].isin(Sport_Category)]
+elif Continent and Sport_Category:
+    filtered_df = df3[df["Continent"].isin(Continent) & df3["Sport Category"].isin(Sport_Category)]
+elif Continent and Country:
+    filtered_df = df3[df["Continent"].isin(Continent) & df3["Country"].isin(Country)]
+elif Sport_Category:
+    filtered_df = df3[df3["Sport Category"].isin(Sport_Category)]
+else:
+    filtered_df = df3[df3["Continent"].isin(Continent) & df3["Country"].isin(Country) & df3["Sport Category"].isin(Sport_Category)]
+
+#Viewed_sports_categories= filtered_df.groupby(by = ["Viewed_sports_categories"], as_index = False)["Sales"].sum()
+#BAR CHART
+st.title("DATA ANALYSIS & VISUALIZATION")
+col1, col2 = st.columns((2))
+with col1:
+    st.subheader("Website Traffic by Country")
+    fig = px.bar(filtered_df,x = "Country", y = "Website Visit",
+                 template = "seaborn")
+    st.plotly_chart(fig,use_container_width=True, height = 200)
+#PIE CHART
+with col2:
+    st.subheader("Website Visits by Continent")
+    fig = px.pie(filtered_df, values = "Website Visit", names = "Continent", hole = 0.5)
+    fig.update_traces(text = filtered_df["Continent"], textposition = "outside")
+    st.plotly_chart(fig,use_container_width=True)
+
+cl1, cl2 = st.columns((2))
+with cl1:
+    with st.expander("Website Traffic by Country Data"):
+        country = filtered_df.groupby(by = "Country", as_index = False)["Website Visit"].sum()
+        st.write(country.style.background_gradient(cmap="Blues"))
+        csv = country.to_csv(index = False).encode('utf-8')
+        st.download_button("Download Data", data = csv, file_name = "Website Traffic by Country.csv", mime = "text/csv",
+                            help = 'Click here to download the data as a CSV file')
+
+with cl2:
+    with st.expander("Website Visits by Continent Data"):
+        Continent = filtered_df.groupby(by = "Continent", as_index = False)["Website Visit"].sum()
+        st.write(Continent.style.background_gradient(cmap="Oranges"))
+        csv = Continent.to_csv(index = False).encode('utf-8')
+        st.download_button("Download Data", data = csv, file_name = "Website Visits by Continent.csv", mime = "text/csv",
+                        help = 'Click here to download the data as a CSV file')
+
+
+#TIME SERIES ANALYSIS
+#filtered_df = filtered_df.sort_values(by='Time Visits')
+# Assuming you have imported Streamlit as st
+#st.subheader("Visitor Engagement Over Time")
+#line_fig = px.line(filtered_df, x="Time Visits", y="Website Visit", template="seaborn")
+#st.plotly_chart(line_fig, use_container_width=True, height=400)
+# Allow users to view and download the data
+#with st.expander("View Data of Visitor Engagement Over Time:"):
+    # Display the DataFrame with style
+#    st.write(filtered_df.style.background_gradient(cmap="Blues"))   
+# Download button for CSV
+#    csv = filtered_df.to_csv(index=False).encode("utf-8")
+#    st.download_button('Download Data', data=csv, file_name="Visitor Engagement Over Time.csv", mime='text/csv')
+
+#SCATTER PLOT
+filtered_df = filtered_df.sort_values(by='Time Visits')
+st.subheader("Visitor Engagement Over Time")
+scatter_fig = px.scatter(filtered_df, x="Time Visits", y="Website Visit", template="seaborn")
+st.plotly_chart(scatter_fig, use_container_width=True, height=400)
+# Allow users to view and download the data
+with st.expander("View Data of Visitor Engagement Over Time:"):
+    # Display the DataFrame with style
+    st.write(filtered_df.style.background_gradient(cmap="Blues"))
+
+#LINE CHART
+# Convert 'Time Visits' column to datetime if it's not already
+chart1, chart2 = st.columns((2))
+with chart1:
+    filtered_df['Time Visits'] = pd.to_datetime(filtered_df['Time Visits'])
+# Extract the hour of the day from the timestamp
+    filtered_df['hour_of_day'] = filtered_df['Time Visits'].dt.hour
+    visits_by_hour = filtered_df.groupby('hour_of_day').size().reset_index(name='Visits')
+# Create a line chart to visualize the distribution of visits by hour of the day
+    st.subheader("Visits Distribution by Hour of Day")
+    fig_hour = px.line(visits_by_hour, x='hour_of_day', y='Visits',
+              labels={'hour_of_day': 'Hour of Day', 'Visits': 'Number of Visits'})
+    st.plotly_chart(fig_hour, use_container_width=True) 
+
+
+with chart2:
+    st.subheader("Time Spent vs Sport Category")
+    fig = px.bar(filtered_df,x = "Sport Category", y = "Time Spent",
+                 template = "plotly_dark")
+    st.plotly_chart(fig,use_container_width=True, height = 200)
+
+
+#TREE MAP
+# Create a treemap based on country,referrer,sport category, website visit 
+st.subheader("Global User Engagement Treemap")
+fig3 = px.treemap(filtered_df, path = ["Country","Referrer","Sport Category"], values = "Website Visit",hover_data = ["Website Visit"],
+                  color = "Referrer")
+fig3.update_layout(width = 800, height = 650)
+st.plotly_chart(fig3, use_container_width=True)
+
+#PIE CHART
+chart1, chart2 = st.columns((2))
+with chart1:
+  st.subheader("Popularity of Sport Categories")
+  fig = px.pie(df, values='Website Visit', names='Sport Category', template='seaborn')
+  st.plotly_chart(fig, use_container_width=True)
+  csv = filtered_df.to_csv(index=False).encode("utf-8")
+  st.download_button('Download Data', data=csv, file_name="Popularity of Sport Categories.csv", mime='text/csv')  
+#PIE CHART
+with chart2:
+ status_code_counts = df['Status Code'].value_counts()
+ st.subheader('Error Analysis')
+ fig = px.pie(values=status_code_counts, names=status_code_counts.index, template='plotly')
+ st.plotly_chart(fig, use_container_width=True)
+# Download button for CSV
+ csv = filtered_df.to_csv(index=False).encode("utf-8")
+ st.download_button('Download Data', data=csv, file_name="Error Analysis", mime='text/csv')  
+
+#BAR CHART
+st.subheader('Top Referrer Websites')
+fig = px.bar(df, x='Referrer', y='Website Visit', template='gridon')
+fig.update_traces(text=df['Website Visit'], textposition='inside') 
+st.plotly_chart(fig, use_container_width=True)
+
+# Download button for CSV
+csv = filtered_df.to_csv(index=False).encode("utf-8")
+st.download_button('Download Data', data=csv, file_name="Top Referrer Websites", mime='text/csv')  
+
+#SUMMARY TABLE
+
+import plotly.figure_factory as ff
+st.subheader("Summary Table")
+
+with st.expander("Summary_Table"):
+    df_sample = df.head(5)[["Country", "Sport Category", "Time Stamp", "Website Visit", "Status Code"]]
+    fig = ff.create_table(df_sample, colorscale="Cividis")
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.markdown("Month wise sub-Category Table")
+    # Assuming you have a `filtered_df` DataFrame with an "Order Date" column
+    filtered_df = df.copy()  # Creating a copy of df, replace it with your actual filtered DataFrame
+    filtered_df["month"] = pd.to_datetime(filtered_df["Time Stamp"]).dt.month_name()
+    sub_category_Year = pd.pivot_table(data=filtered_df, values="Website Visit", index=["Sport Category"], columns="month", aggfunc='sum', fill_value=0)
+    st.write(sub_category_Year.style.background_gradient(cmap="Blues"))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
